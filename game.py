@@ -41,7 +41,7 @@ class Chess():
             state = self.change_perspective(state, -1)
             
             enemyMoves = self.getAllPlayerMoves(state)
-            if self.validateDanger(enemyMoves):
+            if self.validate_danger(enemyMoves):
                 moves.remove(move)
                 
             state = self.change_perspective(state, -1)
@@ -80,7 +80,7 @@ class Chess():
                         moves += state[r,c].piece.getMoves(r, c, state)
         return moves
     
-    def validateDanger(self, enemyMoves):
+    def validate_danger(self, enemyMoves):
         for move in enemyMoves:
             if isinstance(move, Move):
                 if move.enemyKingInRange:
@@ -107,7 +107,7 @@ class Chess():
         if self.check_win(state, action):
             return 1, True
         if self.check_tie(state, action):
-            return 0, True
+            return 0, True          
         return 0, False
 
     def get_opponent(self, player):

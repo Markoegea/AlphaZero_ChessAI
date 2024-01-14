@@ -10,13 +10,13 @@ from agent import MCTS, AlphaZero
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args = {
     'C': 2,
-    'num_searches': 700, # 600
-    'num_iterations':1, # 8
-    'num_selfPlay_iterations':50, # 500
+    'num_searches': 500, # 600
+    'num_iterations':8, # 8
+    'num_selfPlay_iterations':10, # 500
     'num_playerPlay_iterations':5,
     'num_parallel_games':100,
     
-    'num_epochs':6,
+    'num_epochs':15,
     'batch_size':32,
     
     'num_resBlocks': 8,

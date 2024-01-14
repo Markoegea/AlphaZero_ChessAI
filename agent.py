@@ -9,12 +9,14 @@ from tqdm import tqdm
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class Node:
-    def __init__(self, game, args, state, parent=None, action_taken=None, prior=0, visit_counts=0):
+    def __init__(self, game, args, state, parent=None, action_taken=None, move_count=0, prior=0, visit_counts=0):
         self.game = game
         self.args = args
         self.state = state
-        self.parent = parent
         self.action_taken = action_taken
+        self.move_count = move_count
+        
+        self.parent = parent
         self.prior = prior
 
         self.children = []
@@ -50,7 +52,7 @@ class Node:
                 child_state = copy.deepcopy(self.state)
                 child_state = self.game.get_next_state(child_state, action, 1)
                 child_state = self.game.change_perspective(child_state, player=-1)
-                child = Node(self.game, self.args, child_state, self, action, prob)
+                child = Node(self.game, self.args, child_state, self, action, self.move_count+1, prob)
                 self.children.append(child)
 
     def backpropagate(self, value):
@@ -59,7 +61,7 @@ class Node:
 
         value = self.game.get_opponent_value(value)
         if self.parent is not None:
-            self.parent.backpropagate(value)
+            self.parent.backpropagate(value)       
 
 class MCTS:
     def __init__(self, game, args, model):
@@ -89,6 +91,10 @@ class MCTS:
 
             value, is_terminal = self.game.get_value_and_terminated(node.state, node.action_taken)
             value = self.game.get_opponent_value(value)
+            
+            # 60 are the maximum moves, by 2 we have two consider the two players move
+            if node.move_count >= (60 * 2):
+                value, is_terminal = 0, True
             
             if not is_terminal:
                 policy, value = self.model(
@@ -128,6 +134,7 @@ class AlphaZero:
         memory = []
         player = 1
         state = self.game.get_initial_state()
+        moves_count = 0
 
         while True:        
             valid_moves = self.game.get_valid_moves(state)
@@ -142,12 +149,15 @@ class AlphaZero:
             action = np.random.choice(valid_moves, p=(temperature_action_probs/sum(temperature_action_probs)))
 
             state = self.game.get_next_state(state, action, player)
-            
-            print(state)
+            moves_count += 1
+            print(moves_count)
 
             state = self.game.change_perspective(state, -1)   
 
             value, is_terminal = self.game.get_value_and_terminated(state, action)
+            if moves_count >= 60:
+                value, is_terminal = 0, True
+                
             if is_terminal:
                 returnMemory = []
                 for hist_neutral_state, hist_action_probs, hist_player in memory:
@@ -165,6 +175,7 @@ class AlphaZero:
         memory = []
         player = 1
         state = self.game.get_initial_state()
+        moves_count = 0
 
         while True:
             print('\n', state, '\n')
@@ -195,10 +206,14 @@ class AlphaZero:
             memory.append((state, action_probs, player))
 
             state = self.game.get_next_state(state, action, player)
+            moves_count += 1
             
             state = self.game.change_perspective(state, -1)
 
             value, is_terminal = self.game.get_value_and_terminated(state, action)
+            if moves_count >= 60:
+                value, is_terminal = 0, True
+
             if is_terminal:
                 returnMemory = []
                 for hist_neutral_state, hist_action_probs, hist_player in memory:
