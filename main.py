@@ -4,20 +4,22 @@ import matplotlib.pyplot as plt
 #Internal libraries
 from game import *
 from model import *
-from agent import MCTS, AlphaZero
+from agent import MCTS, AlphaZero, AlphaZeroParallel
 
 #Runtime variables
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args = {
     'C': 2,
-    'num_searches': 500, # 600
-    'num_iterations':8, # 8
-    'num_selfPlay_iterations':10, # 500
-    'num_playerPlay_iterations':5,
-    'num_parallel_games':100,
+    'num_searches': 600, # 600
+    'num_iterations': 2, # 8
+    'num_selfPlay_iterations': 20, # 500    
+    'num_parallel_games': 10,
+    'num_playerPlay_iterations': 5,
     
-    'num_epochs':15,
+    'num_epochs':50,
     'batch_size':32,
+    'lr': 0.00001,
+    'weight_decay': 0.0001,
     
     'num_resBlocks': 8,
     'num_hidden' : 128,
@@ -61,7 +63,7 @@ def play_alone(player, game):
         
 def play_with_machine(game, player, args, device):
     model = ResNet(game, args['num_resBlocks'], args['num_hidden']).to(device)
-    model.load_state_dict(torch.load('models/model_8_128_Chess_Game/model_0_Chess_Game.pth', map_location=device))
+    model.load_state_dict(torch.load('models/model_8_128_Chess_Game/model_1_Chess_Game.pth', map_location=device))
     mcts = MCTS(game, args, model)
     state = game.get_initial_state()
     
@@ -101,16 +103,24 @@ def play_with_machine(game, player, args, device):
             player = game.get_opponent(player)
 
 def train_model(game, args):
-    state_dict = 'models/model_8_128_Chess_Game/model_0_Chess_Game.pth'
+    state_dict = 'models/model_8_128_Chess_Game/model_01_Chess_Game.pth'
     model = ResNet
     optimizer = torch.optim.AdamW
-    alphaZero = AlphaZero(model,optimizer,game,args,state_dict)
+    alphaZero = AlphaZero(model, optimizer, game, args, state_dict)
     train_losses = alphaZero.learn(playType=alphaZero.selfPlay, numOfPlays=args['num_selfPlay_iterations'])
+    plot_loss(train_losses=train_losses)
+    
+def train_model_in_parallel(game, args):
+    state_dict = None
+    model = ResNet
+    optimizer = torch.optim.AdamW
+    alphaZeroParallel = AlphaZeroParallel(model, optimizer, game, args, state_dict)
+    train_losses = alphaZeroParallel.learn()
     plot_loss(train_losses=train_losses)
     
 # A function that allow me to play with the machine, save our moves and train with it
 def train_by_playing(game, args):
-    state_dict = 'models/model_8_128_Chess_Game/model_0_Chess_Game.pth'
+    state_dict = 'models/model_8_128_Chess_Game/model_lineal_01_Chess_Game.pth'
     model = ResNet
     optimizer = torch.optim.AdamW
     alphaZero = AlphaZero(model, optimizer, game, args, state_dict)
@@ -131,18 +141,18 @@ def plot_loss(train_losses):
 def plot_model_predictions(state, device):
     torch.manual_seed(42)
     
-    action = Pawn.Move((6,0), (5,0), state)
+    action = Move((6,0), (5,0), state)
     state = game.get_next_state(state, action, player)
     print(state)
 
     encoded_state = game.get_encoded_state(state)
     print(encoded_state.shape)
 
-    tensor_state = torch.tensor(encoded_state).unsqueeze(dim=0).to(device)
+    tensor_state = torch.tensor(encoded_state).to(device)
     print(tensor_state.shape)
 
     model = ResNet(game, args['num_resBlocks'], args['num_hidden']).to(device)
-    #model.load_state_dict(torch.load('models/model_8_128_Chess_Game/model_0_Chess_Game.pth',map_location=device))
+    model.load_state_dict(torch.load('models/model_8_128_Chess_Game/model_1_Chess_Game.pth',map_location=device))
 
     model.eval()
     with torch.inference_mode():
@@ -158,11 +168,12 @@ if __name__ == '__main__':
     Menu:
     1. Play Chess game in cooperative mode.
     2. Play Chess game against the machine.
-    3. Train the model by playing with itself.
-    4. Train the model by playing yourself
-    5. Plot the model predictions given a state
-    6. Exit
-    Enter your choice (1-6):
+    3. Train the model playing AI vs AI.
+    4. Train the model playing AI vs AI in parallel.
+    5. Train the model playing with you.
+    6. Plot the model predictions given a state
+    7. Exit
+    Enter your choice (1-7):
     """
     choice = input(menu)
     if choice == '1':
@@ -172,9 +183,11 @@ if __name__ == '__main__':
     elif choice == '3':
         train_model(game, args)
     elif choice == '4':
-       train_by_playing(game, args) 
+        train_model_in_parallel(game, args)
     elif choice == '5':
+       train_by_playing(game, args) 
+    elif choice == '6':
         state = game.get_initial_state()
         plot_model_predictions(state, device)
-    elif choice == '6':
+    elif choice == '7':
             print("Exiting the program. Goodbye!")
