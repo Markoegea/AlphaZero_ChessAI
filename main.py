@@ -63,7 +63,7 @@ def play_alone(player, game):
         
 def play_with_machine(game, player, args, device):
     model = ResNet(game, args['num_resBlocks'], args['num_hidden']).to(device)
-    model.load_state_dict(torch.load('models/model_8_128_Chess_Game/model_1_Chess_Game.pth', map_location=device))
+    model.load_state_dict(torch.load('models/model_parallel_8_128_Chess_Game/model_1_Chess_Game_2024-01-30.pth', map_location=device))
     mcts = MCTS(game, args, model)
     state = game.get_initial_state()
     
@@ -152,7 +152,7 @@ def plot_model_predictions(state, device):
     print(tensor_state.shape)
 
     model = ResNet(game, args['num_resBlocks'], args['num_hidden']).to(device)
-    model.load_state_dict(torch.load('models/model_8_128_Chess_Game/model_1_Chess_Game.pth',map_location=device))
+    model.load_state_dict(torch.load('models/model_parallel_8_128_Chess_Game/model_1_Chess_Game_2024-01-30.pth',map_location=device))
 
     model.eval()
     with torch.inference_mode():
